@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Upgrade the Supercar 3D</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #000; font-family: 'Segoe UI', Arial, sans-serif; }
+    canvas { display: block; width: 100%; height: 100%; }
+
+    /* UI Overlay */
+    #ui-overlay {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      pointer-events: none; z-index: 10;
+    }
+    #ui-overlay * { pointer-events: auto; }
+
+    /* HUD - top bar */
+    #hud {
+      position: absolute; top: 0; left: 0; width: 100%;
+      padding: 16px 20px; display: none;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, transparent 100%);
+    }
+    #car-tier-name {
+      color: #fff; font-size: 22px; font-weight: 700;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.7);
+      text-align: center;
+    }
+    #car-value {
+      color: #4ffd4f; font-size: 16px; font-weight: 600;
+      text-align: center; margin-top: 2px;
+      text-shadow: 0 1px 4px rgba(0,0,0,0.7);
+    }
+
+    /* Progress bar */
+    #progress-container {
+      width: 80%; max-width: 400px; margin: 10px auto 0;
+      height: 8px; background: rgba(255,255,255,0.2);
+      border-radius: 4px; overflow: hidden;
+    }
+    #progress-bar {
+      height: 100%; width: 0%; border-radius: 4px;
+      background: linear-gradient(90deg, #00c6ff, #0072ff);
+      transition: width 0.1s linear;
+    }
+
+    /* Start screen */
+    #start-screen {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+    }
+    #start-screen h1 {
+      font-size: clamp(28px, 6vw, 56px); color: #fff;
+      text-shadow: 0 0 30px rgba(79,253,79,0.5), 0 4px 12px rgba(0,0,0,0.6);
+      margin-bottom: 8px; text-align: center; padding: 0 20px;
+    }
+    #start-screen .subtitle {
+      font-size: clamp(14px, 2.5vw, 20px); color: #aaa;
+      margin-bottom: 40px; text-align: center; padding: 0 20px;
+    }
+    #start-btn {
+      font-size: clamp(18px, 3vw, 26px); padding: 16px 48px;
+      border: none; border-radius: 50px; cursor: pointer;
+      background: linear-gradient(135deg, #4ffd4f, #00c853);
+      color: #1a1a2e; font-weight: 700;
+      box-shadow: 0 4px 20px rgba(79,253,79,0.4);
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    #start-btn:hover { transform: scale(1.05); box-shadow: 0 6px 30px rgba(79,253,79,0.6); }
+    #start-btn:active { transform: scale(0.97); }
+
+    /* End screen */
+    #end-screen {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      display: none; flex-direction: column; align-items: center; justify-content: center;
+      background: rgba(15,12,41,0.92);
+    }
+    #end-screen h2 {
+      font-size: clamp(24px, 5vw, 44px); color: #fff;
+      text-shadow: 0 0 20px rgba(255,215,0,0.5);
+      margin-bottom: 12px;
+    }
+    #final-car-name {
+      font-size: clamp(20px, 4vw, 36px); color: #4ffd4f;
+      font-weight: 700; margin-bottom: 6px;
+    }
+    #final-value {
+      font-size: clamp(28px, 5vw, 48px); color: #ffd700;
+      font-weight: 800; margin-bottom: 30px;
+      text-shadow: 0 0 20px rgba(255,215,0,0.4);
+    }
+    #play-again-btn {
+      font-size: clamp(16px, 2.8vw, 22px); padding: 14px 40px;
+      border: none; border-radius: 50px; cursor: pointer;
+      background: linear-gradient(135deg, #ff6a00, #ee0979);
+      color: #fff; font-weight: 700;
+      box-shadow: 0 4px 20px rgba(238,9,121,0.4);
+      transition: transform 0.15s;
+    }
+    #play-again-btn:hover { transform: scale(1.05); }
+    #play-again-btn:active { transform: scale(0.97); }
+
+    /* Upgrade/Downgrade flash */
+    #flash-overlay {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      pointer-events: none; opacity: 0;
+      transition: opacity 0.15s ease-out;
+    }
+
+    /* Touch hint */
+    #touch-hint {
+      position: absolute; bottom: 60px; left: 50%; transform: translateX(-50%);
+      color: rgba(255,255,255,0.5); font-size: 14px; display: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="ui-overlay">
+    <!-- HUD -->
+    <div id="hud">
+      <div id="car-tier-name">Junk Car</div>
+      <div id="car-value">$500</div>
+      <div id="progress-container">
+        <div id="progress-bar"></div>
+      </div>
+    </div>
+
+    <!-- Start Screen -->
+    <div id="start-screen">
+      <h1>Upgrade the Supercar</h1>
+      <div class="subtitle">Steer through gates to transform your ride!</div>
+      <button id="start-btn">TAP TO START</button>
+    </div>
+
+    <!-- End Screen -->
+    <div id="end-screen">
+      <h2>FINISH!</h2>
+      <div id="final-car-name"></div>
+      <div id="final-value"></div>
+      <button id="play-again-btn">PLAY AGAIN</button>
+    </div>
+
+    <!-- Flash overlay for effects -->
+    <div id="flash-overlay"></div>
+
+    <!-- Mobile touch hint -->
+    <div id="touch-hint">← Swipe to steer →</div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
